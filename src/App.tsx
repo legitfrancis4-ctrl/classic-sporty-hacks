@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { api } from "./api";
-import { supabase } from "./src/lib/supabase";
+import { api } from '@appdeploy/client';
+import { supabase } from './lib/supabase';
 import { Activity, ClipboardList, Search, Shield, Ticket, X, ChevronLeft, Gift, RefreshCw } from 'lucide-react';
 
 type Match = { id: string; league: string; time: string; home: string; away: string; score?: string; odds: string[]; live: boolean; homeLogo?: string; awayLogo?: string; operatorScheduled?: boolean; scheduledEndAt?: string; scheduledStatus?: string };
@@ -14,7 +14,6 @@ const games = [
   ['Horse Racing','POPULAR','🏇','game-purple'],['Greyhounds','INSTANT','🐕','game-blue'],
   ['Virtual Tennis','SCHEDULED','🎾','game-green'],['Speedway','NEW','🏁','game-black']
 ];
-
 const virtualLeagues = [
   { name: 'England', flag: '🏴', teams: ['Arsenal','Aston Villa','Bournemouth','Brentford','Brighton','Chelsea','Crystal Palace','Everton','Fulham','Ipswich','Leicester','Liverpool','Man City','Man United','Newcastle','Nottingham Forest','Southampton','Tottenham','West Ham','Wolves'] },
   { name: 'Spain', flag: '🇪🇸', teams: ['Alaves','Athletic Club','Atletico Madrid','Barcelona','Real Betis','Celta Vigo','Getafe','Girona','Las Palmas','Leganes','Mallorca','Osasuna','Rayo Vallecano','Real Madrid','Real Sociedad','Sevilla','Valencia','Valladolid','Villarreal','Espanyol'] },
@@ -22,9 +21,7 @@ const virtualLeagues = [
   { name: 'Italy', flag: '🇮🇹', teams: ['Atalanta','Bologna','Cagliari','Como','Empoli','Fiorentina','Genoa','Inter','Juventus','Lazio','Lecce','AC Milan','Monza','Napoli','Parma','Roma','Torino','Udinese','Sampdoria','Palermo'] },
   { name: 'France', flag: '🇫🇷', teams: ['Auxerre','Brest','Le Havre','Lens','Lille','Lyon','Marseille','Monaco','Montpellier','Nantes','Nice','PSG','Reims','Rennes','Saint-Etienne','Strasbourg','Toulouse','Bordeaux','Lorient','Metz'] }
 ];
-
 const money = (n: number) => `GHS ${Number(n || 0).toFixed(2)}`;
-
 const val = (row: any, keys: string[], fallback = ''): string => {
   for (const key of keys) if (row?.[key] !== undefined && row?.[key] !== null && row?.[key] !== '') return String(row[key]);
   return fallback;
@@ -80,12 +77,10 @@ export default function App() {
   const [footballPhase,setFootballPhase] = useState('Ready for kick-off');
   const [footballHistory,setFootballHistory] = useState<string[]>([]);
   const [winnerPopup,setWinnerPopup] = useState<any>(null);
-
   const openBetTicket = (bet:any) => {
     setSelectedBetId(String(bet.id));
     if (String(bet.status || '').toLowerCase() === 'won') setWinnerPopup(bet);
   };
-
   const playPracticeRound = async () => {
     if (!selectedGame || footballBusy) return;
     if (selectedGame === 'Instant Football') {
@@ -114,6 +109,11 @@ export default function App() {
         }
         setFootballScore({home,away});
       }
+      const summary = `FULL TIME · HOME ${home}–${away} AWAY`;
+      setFootballPhase('Full time');
+      setGameResult(summary);
+      setFootballHistory(old => [summary, ...old].slice(0,5));
+      setGameRounds(n => n + 1);
       setPracticePoints(n => n + 10);
       setFootballBusy(false);
       return;
@@ -173,7 +173,7 @@ export default function App() {
       return;
     }
     const whatsappPhone = '233' + customerPhone.slice(1);
-    const text = `Hello, your Classic Sporty Hacks deposit request for ${money(Number(row.amount || 0))} via ${row.payment_method || 'Mobile Money'} is being processed.\n\n${message}\n\nPlease keep your transaction receipt. Your wallet will only be credited after payment verification.`;
+    const text = `Hello, your Classic Sporty Hacks deposit request for ${money(Number(row.amount || 0))} via ${row.payment_method || 'Mobile Money'} is being processed.\\n\\n${message}\\n\\nPlease keep your transaction receipt. Your wallet will only be credited after payment verification.`;
     window.open(`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
   const [adminTab,setAdminTab] = useState('Overview');
@@ -213,6 +213,7 @@ export default function App() {
   const virtualRoundNumber = Math.floor(clockNow / virtualRoundDurationMs) + 1;
   const virtualRoundSecondsLeft = Math.ceil((virtualRoundDurationMs - (clockNow % virtualRoundDurationMs)) / 1000);
   const virtualRoundCountdown = `${String(Math.floor(virtualRoundSecondsLeft / 60)).padStart(2, '0')}:${String(virtualRoundSecondsLeft % 60).padStart(2, '0')}`;
+
   const loadMyBets = async () => {    if (!session?.user?.id) { setMyBets([]); setMyBetSelections([]); setMyBetMatches([]); return; }
     setMyBetsLoading(true); setBetError('');
     try {
@@ -844,8 +845,7 @@ export default function App() {
                 market: '1X2',
                 selection,
                 odd,
-                is_active: true,
-              });
+                is_active: true,              });
               if (inserted.error) throw inserted.error;
             }
             oddsSaved += 1;
@@ -889,11 +889,7 @@ export default function App() {
       const pendingIds = Array.from(new Set((selectionRows || [])
         .filter((row:any) => row.result == null || ['pending','open'].includes(String(row.result).toLowerCase()))
         .map((row:any) => String(row.match_id)).filter(Boolean)));
-      if (!pendingIds.length) {
-        setResultsMessage('There are no unresolved football selections to settle.');
-        await loadAdminData();
-        return;
-      }
+      if (!pendingIds.length) { setResultsMessage('There are no unresolved football selections to settle.'); await loadAdminData(); return; }
       const {data:pendingMatches,error:matchesError} = await supabase.from('matches')
         .select('id,home_team,away_team,start_time,status,home_score,away_score')
         .in('id',pendingIds).lte('start_time',new Date().toISOString()).limit(300);
@@ -901,11 +897,7 @@ export default function App() {
       const dates = Array.from(new Set((pendingMatches || []).map((match:any) =>
         match.start_time ? new Date(match.start_time).toISOString().slice(0,10) : ''
       ).filter(Boolean)));
-      if (!dates.length) {
-        setResultsMessage('No unresolved selections belong to matches whose kickoff has passed.');
-        await loadAdminData();
-        return;
-      }
+      if (!dates.length) { setResultsMessage('No unresolved selections belong to matches whose kickoff has passed.'); await loadAdminData(); return; }
       for (const date of dates) {
         let fixtures:any[] = [];
         try {
@@ -960,9 +952,8 @@ export default function App() {
       if (settlementError) throw settlementError;
       setResultsMessage('Manual result saved and settlement completed: '+JSON.stringify(settlement));
       await loadAdminData();
-    } catch (err:any) {
-      setAdminError(err?.message || 'Could not save and settle this result.');
-    } finally { setResultsBusy(false); }
+    } catch (err:any) { setAdminError(err?.message || 'Could not save and settle this result.'); }
+    finally { setResultsBusy(false); }
   };
 
   const createScheduledMatch = async (e:FormEvent) => {
@@ -978,8 +969,7 @@ export default function App() {
     // Ghana uses UTC+00:00; interpret the datetime-local input explicitly as Ghana time.
     const kickoff = new Date(kickoffValue + ':00+00:00');
     if (!Number.isFinite(kickoff.getTime()) || kickoff.getTime() <= Date.now()) {
-      setAdminError('Choose a kickoff time in the future (Ghana time).');
-      return;
+      setAdminError('Choose a kickoff time in the future (Ghana time).');      return;
     }
     setScheduledBusy(true);
     setAdminError('');
@@ -987,6 +977,7 @@ export default function App() {
       const { error } = await supabase.from('matches').insert({
         home_team: scheduledForm.home_team.trim(),
         away_team: scheduledForm.away_team.trim(),
+`` 
         start_time: kickoff.toISOString(),
         status: 'scheduled',
         is_live: false,
@@ -1164,8 +1155,7 @@ export default function App() {
   };
 
   const createSlipBookingCode = async () => {
-    if (!session?.user?.id) {
-      setAuthMode('login');
+    if (!session?.user?.id) {      setAuthMode('login');
       setShowAuth(true);
       return;
     }
@@ -1218,8 +1208,7 @@ export default function App() {
       setBookingCode(createdCode);
       setShowBookingTicket(true);
       tell('Booking code created: ' + createdCode + '. Share it so another user can load your exact selections and stake.');
-    } catch (err: any) {
-      setBetError(err?.message || 'Could not create booking code. Check booking-code table permissions.');
+    } catch (err: any) {      setBetError(err?.message || 'Could not create booking code. Check booking-code table permissions.');
     } finally {
       setCodeBusy(false);
     }
@@ -1295,8 +1284,7 @@ export default function App() {
         setShowAuth(false);setPassword('');tell('You are signed in.');
       }
     }catch(err:any){setAuthError(err.message||'Authentication failed.');}
-    finally{setAuthBusy(false);}
-  };
+    finally{setAuthBusy(false);}  };
   const signOut=async()=>{
     const {error}=await supabase.auth.signOut();
     if(error) tell(error.message); else {setPage('home');setSlip([]);tell('Signed out.');}
@@ -1389,8 +1377,20 @@ export default function App() {
   <button type='button' className='red-action' onClick={playPracticeRound} disabled={footballBusy}>{footballBusy?'MATCH IN PROGRESS…':'▶ START FOOTBALL MATCH'}</button>
   {footballHistory.length>0&&<div className='virtual-football-history'><b>RECENT PRACTICE RESULTS</b>{footballHistory.map((item,index)=><span key={`${item}-${index}`}>{item}</span>)}</div>}
 </div>}{selectedGame!=='Instant Football'&&<button type='button' className='red-action' onClick={playPracticeRound}>PLAY PRACTICE ROUND</button>}{gameResult&&<div role='status' style={{marginTop:16,padding:14,background:'#252c35',borderRadius:8}}><b>{gameResult}</b></div>}</section> : <><div className='play-now'><b>GAME CATALOGUE</b><span>ⓘ</span></div><div className='virtual-grid'>{games.map(([title,label,art,tone])=><button type='button' className='virtual-card' key={title} aria-label={'Open '+title} onClick={()=>{setSelectedGame(title);setGameResult('');window.scrollTo({top:0,behavior:'smooth'});}}><small>▸ {label}</small><div className={'virtual-art '+tone}><div><b>{title}</b><span>▶ PLAY NOW</span></div><strong>{art}</strong></div></button>)}</div></>}</section>}
-{page==='profile'&&<section className='simple-screen me-screen'>
-<div className='me-hero'>
+    {page==='wallet'&&<section className='simple-screen'><div className='deposit-page-heading'><button type='button' onClick={()=>nav('profile')}>‹ <span>Me</span></button><b>{walletAction==='deposit'?'Deposit':'Withdraw'}</b><button type='button' aria-label='Deposit help' onClick={()=>tell('Choose your mobile money network, enter the amount and payment transaction reference, then submit. Your wallet is credited only after verification.')}>?</button></div><div className='wallet-balance'><small>AVAILABLE BALANCE</small><b>{walletBalance===null?'—':money(walletBalance)}</b><span>{!session?'Sign in to access your wallet.':walletLoading?'Loading your balance from Supabase…':walletError?'Wallet could not be loaded.':walletBalance===null?'Wallet data was returned, but its balance field needs mapping.':'Live balance from your Supabase wallet.'}</span></div>{session&&<button className='red-action' onClick={loadWallet} disabled={walletLoading}>{walletLoading?'Refreshing…':'Refresh balance'}</button>}{walletError&&<p role='alert' style={{color:'#bd1028'}}>Wallet error: {walletError}</p>}<div className='wallet-buttons'><button onClick={()=>{setWalletAction('deposit');setWalletActionError('');}}>Deposit</button><button onClick={()=>{setWalletAction('withdraw');setWalletActionError('');}}>Withdraw</button></div>{session?<form className={'wallet-action-form '+(walletAction==='deposit'?'deposit-reference-form':'')} onSubmit={submitWalletRequest}>{walletAction==='deposit'?<><div className='deposit-tabs'>{(['Mobile Money','Paybill','Card'] as const).map(tab=><button type='button' key={tab} className={depositTab===tab?'active':''} onClick={()=>{setDepositTab(tab);if(tab!=='Mobile Money')tell(tab+' deposits are not connected yet. Mobile Money is currently available.');}}>{tab}</button>)}</div><div className='deposit-warning'><b>!</b><span>Enter your own MoMo number, choose your network and amount, then submit a deposit request. After submitting, check Notification Center for your private deposit update. Do not send money until the payment instructions are displayed there. Your wallet is credited only after the payment is independently verified.</span></div><label>Mobile Money number<input required type='tel' inputMode='numeric' pattern='0[0-9]{9}' maxLength={10} placeholder='e.g. 0241234567' value={depositForm.phone} onChange={e=>setDepositForm({...depositForm,phone:e.target.value.replace(/[^0-9]/g,'').slice(0,10)})}/></label><label>Payment network<select required value={depositForm.payment_method} onChange={e=>setDepositForm({...depositForm,payment_method:e.target.value})}><option>MTN Mobile Money</option><option>Telecel Cash</option><option>AirtelTigo Money</option></select></label><label>Amount (GHS)<input required type='number' min='1' max='100000' step='0.01' placeholder='min. 1.00' value={depositForm.amount} onChange={e=>setDepositForm({...depositForm,amount:e.target.value})}/></label><div className='deposit-quick-amounts'>{[2,5,10,50,100].map(value=><button type='button' key={value} onClick={()=>setDepositForm({...depositForm,amount:String(Number(depositForm.amount||0)+value)})}>+{value}</button>)}</div><p>Submitting this form only records your request; it does not collect money or trigger a MoMo prompt. Your deposit update will appear in Notification Center. Do not pay until the receiving account and payment instructions are displayed there. Keep your receipt and wait for independent payment verification before your wallet is credited.</p></>:<><div className='withdrawal-intro'><b>Withdraw to Mobile Money</b><span>Choose your network and enter the registered account details. Minimum withdrawal: GHS 10.00.</span></div><label>Mobile money network<select required value={withdrawalForm.provider} onChange={e=>setWithdrawalForm({...withdrawalForm,provider:e.target.value})}><option value='MTN'>MTN Mobile Money</option><option value='VOD'>Telecel Cash</option><option value='ATL'>AirtelTigo Money</option></select></label><label>Amount (GHS)<input required type='number' min='10' step='0.01' placeholder='Minimum GHS 10.00' value={withdrawalForm.amount} onChange={e=>setWithdrawalForm({...withdrawalForm,amount:e.target.value})}/></label><div className='deposit-quick-amounts withdrawal-quick-amounts'>{[10,20,50,100,200].map(value=><button type='button' key={value} onClick={()=>setWithdrawalForm({...withdrawalForm,amount:String(value)})}>GHS {value}</button>)}</div><label>MoMo account name<input required placeholder='Account holder name' value={withdrawalForm.account_name} onChange={e=>setWithdrawalForm({...withdrawalForm,account_name:e.target.value})}/></label><label>MoMo phone number<input required type='tel' inputMode='numeric' pattern='0[0-9]{9}' maxLength={10} placeholder='e.g. 0241234567' value={withdrawalForm.phone} onChange={e=>setWithdrawalForm({...withdrawalForm,phone:e.target.value.replace(/[^0-9]/g,'').slice(0,10)})}/></label><div className='withdrawal-notice'><b>Withdrawal information</b><span>Your requested amount is reserved from your wallet when you submit. An administrator processes the payout. If your request is rejected, the amount is returned to your wallet.</span></div></>}{walletActionError&&<div className='admin-alert' role='alert'>{walletActionError}</div>}<button className='red-action' type='submit' disabled={walletActionBusy}>{walletActionBusy?'Submitting…':walletAction==='deposit'?'TOP UP NOW':'REQUEST WITHDRAWAL'}</button></form>:<button className='red-action' onClick={()=>{setAuthMode('login');setShowAuth(true);}}>Sign in to use your wallet</button>}<p>All wallet changes are processed by protected Supabase functions. Never share your PIN or OTP.</p></section>}
+    {page==='bets'&&(()=>{const selectedBet=myBets.find((bet:any)=>String(bet.id)===String(selectedBetId));const legsFor=(bet:any)=>myBetSelections.filter((leg:any)=>String(leg.bet_id)===String(bet.id));const matchFor=(leg:any)=>myBetMatches.find((match:any)=>String(match.id)===String(leg.match_id));const statusOf=(bet:any)=>String(bet.status||'pending').toLowerCase();const isOpen=(bet:any)=>['pending','open','unsettled'].includes(statusOf(bet));const visibleBets=myBets.filter((bet:any)=>betView==='open'?isOpen(bet):!isOpen(bet)).filter((bet:any)=>betResultFilter==='all'||statusOf(bet)===betResultFilter);const betReturn=(bet:any)=>statusOf(bet)==='won'?Number(bet.potential_win||0):statusOf(bet)==='void'?Number(bet.stake||0):0;const fmtDate=(value:any)=>value?new Date(value).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'—';return <section className='sporty-bets-screen'>{selectedBet?<><header className='ticket-detail-header'><button onClick={()=>setSelectedBetId(null)}>‹ <span>Back</span></button><b>Ticket Details</b><button onClick={()=>tell('Contact support about ticket '+String(selectedBet.reference||selectedBet.id))}>◉</button></header><div className='ticket-summary-dark'><small>Ticket ID: {selectedBet.reference||String(selectedBet.id).slice(0,8)}</small><div className='ticket-type-line'><b>{legsFor(selectedBet).length>1?'Multiple':'Single'}</b><strong className={'ticket-status '+statusOf(selectedBet)}>{statusOf(selectedBet).toUpperCase()}</strong></div><div className='ticket-return'><span>Total Classic Sporty Hacks Return</span><b>{money(betReturn(selectedBet))}</b></div><div className='ticket-metrics'><div><span>Total Stake</span><b>{money(Number(selectedBet.stake))}</b></div><div><span>Total Odds</span><b>{Number(selectedBet.combined_odds||1).toFixed(2)}</b></div><div><span>Potential Return</span><b>{money(Number(selectedBet.potential_win))}</b></div><div><span>Placed</span><b>{new Date(selectedBet.created_at).toLocaleString()}</b></div></div></div><div className='ticket-legs'>{legsFor(selectedBet).map((leg:any,index:number)=>{const match=matchFor(leg);const result=String(leg.result||'pending').toLowerCase();const hs=match?.home_score;const as=match?.away_score;const pick=String(leg.selection||'');const market=String(leg.market||'Market');const outcome=market.toLowerCase()==='1x2'?pick==='1'?'Home':pick.toUpperCase()==='X'?'Draw':pick==='2'?'Away':pick:pick;return <article className='ticket-leg' key={leg.id||index}><div className='ticket-leg-result'><b className={result==='won'?'won':result==='lost'?'lost':'pending'}>{result==='won'?'✓':result==='lost'?'×':'•'}</b><div><small>{match?.start_time?new Date(match.start_time).toLocaleString():''}</small><strong>{match?match.home_team+' v '+match.away_team:'Match details unavailable'}</strong><span>FT Score　{hs===null||hs===undefined?'—':hs+':'+(as??'—')}</span></div></div><div className={'ticket-pick-box '+(result==='won'?'pick-won':result==='lost'?'pick-lost':'pick-pending')}><div><span>Pick</span><b>{pick}@{Number(leg.odd||0).toFixed(2)}</b></div><div><span>Market</span><b>{market}</b></div><div><span>Outcome</span><b>{outcome}</b></div><em>{result.toUpperCase()}</em></div></article>})}{!legsFor(selectedBet).length&&<p className='ticket-empty'>No selection details were found for this ticket.</p>}</div></>:<><div className='bets-topbar'><div><span>ⓘ How to Cashout?</span><strong>{walletBalance===null?'GHS 0.00':money(walletBalance)}</strong></div><nav><button className={betView==='open'?'active':''} onClick={()=>{setBetView('open');setBetResultFilter('all')}}>Open Bets</button><button className={betView==='history'?'active':''} onClick={()=>{setBetView('history');setBetResultFilter('all')}}>Bet History</button></nav></div><div className='bets-filters'><select aria-label='Bet result' value={betResultFilter} onChange={e=>setBetResultFilter(e.target.value)}><option value='all'>Bet Result</option><option value='won'>Won</option><option value='lost'>Lost</option><option value='void'>Void</option></select><button onClick={loadMyBets} disabled={myBetsLoading}>↻</button></div>{betError&&<div className='admin-alert' role='alert'>{betError}</div>}{myBetsLoading?<div className='ticket-empty'>Loading your bets…</div>:visibleBets.length?visibleBets.map((bet:any)=><article className='bet-history-card' key={bet.id} onClick={()=>openBetTicket(bet)}><div className='bet-history-date'><b>{fmtDate(bet.created_at).split(' ')[0]}</b><span>{fmtDate(bet.created_at).split(' ')[1]}</span></div><div className='bet-history-content'><header><b>{legsFor(bet).length>1?'Multiple':'Single'}</b><strong className={'ticket-status '+statusOf(bet)}>{statusOf(bet).toUpperCase()}　›</strong></header><div><span>Total Stake (GHS)</span><b>{Number(bet.stake||0).toFixed(2)}</b></div><div><span>Total Return</span><b className='history-return'>{betReturn(bet).toFixed(2)}</b></div><hr/><p>{legsFor(bet).slice(0,3).map((leg:any)=>{const match=matchFor(leg);return match?match.home_team+' v '+match.away_team:String(leg.selection||'Selection')}).join(' · ')}</p>{legsFor(bet).length>3&&<small>…(and {legsFor(bet).length-3} other matches)</small>}<button type='button' onClick={e=>{e.stopPropagation();setSelectedBetId(String(bet.id))}}>View Ticket Details</button></div></article>):<div className='ticket-empty'><Ticket size={38}/><b>No {betView==='open'?'open bets':'settled bets'} found</b><p>Your tickets will appear here when you place bets.</p></div>}</>}</section>})()}
+    {page==='notifications'&&<section className='simple-screen'><div className='deposit-page-heading'><button type='button' onClick={()=>nav('profile')}>‹ <span>Me</span></button><b>Notification Center</b><button type='button' onClick={loadNotifications}>↻</button></div><p>Your private deposit updates and account notifications.</p>{notificationsError&&<div className='admin-alert' role='alert'>Could not load notifications: {notificationsError}</div>}{notificationsLoading?<p>Loading notifications…</p>:notifications.length?notifications.map((item:any)=>{const isDeposit=String(item.title||'').toLowerCase().includes('deposit');const isMtn=/mtn/i.test(String(item.message||''));return <article className='admin-row' key={item.id} style={{display:'block',marginBottom:12}}><b>{item.title}</b><p style={{margin:'8px 0'}}>{item.message}</p>{isDeposit&&isMtn&&<div style={{marginTop:12,padding:14,borderRadius:10,background:'#10251c',border:'1px solid #24734b',color:'#fff'}}><div style={{fontSize:11,fontWeight:800,letterSpacing:1,color:'#8ee3ad'}}>CLASSIC SPORTY HACKS · OFFICIAL MTN PAYMENT</div><h3 style={{margin:'8px 0',color:'#fff'}}>Complete your deposit</h3><p style={{margin:'6px 0',color:'#d8e8df'}}>1. Open your MTN MoMo app and choose Send Money.<br/>2. Enter the receiving number below.<br/>3. Confirm the recipient name shown by MTN before continuing.<br/>4. Send exactly the amount in your deposit request.<br/>5. Keep your transaction ID and receipt, then wait for verification.</p>{mtnReceivingNumber?<div style={{padding:12,background:'#07150f',borderRadius:8,margin:'10px 0'}}><small style={{display:'block',color:'#9ab6a5'}}>MTN RECEIVING NUMBER</small><strong style={{fontSize:22,letterSpacing:1,color:'#fff',overflowWrap:'anywhere'}}>{mtnReceivingNumber}</strong><button type='button' onClick={()=>{navigator.clipboard?.writeText(mtnReceivingNumber);tell('Receiving number copied.');}} style={{display:'block',marginTop:8,padding:'8px 12px'}}>Copy number</button></div>:<p role='alert' style={{color:'#ffd1a8'}}>{mtnReceivingError||'Loading secure receiving details…'}</p>}<p style={{fontSize:12,color:'#d8e8df',marginBottom:0}}>Important: Only send after confirming the account name. Never share your MoMo PIN or OTP. Your wallet is credited only after an administrator independently verifies the payment in the receiving account. A deposit request or receipt alone does not guarantee credit.</p></div>}{isDeposit&&!isMtn&&<p style={{fontSize:12,color:'#ffd1a8'}}>These receiving instructions currently support MTN Mobile Money only. Do not send money using another network until its receiving details are provided.</p>}<small>{item.created_at?new Date(item.created_at).toLocaleString():''} · NEW</small></article>}):<div className='ticket-empty'>You have no notifications yet. Deposit updates will appear here.</div>}</section>}
+    {page==='profile'&&<section className='me-screen'>
+      <div className='me-hero'>
+        <div className='me-profile-row'>
+          <div className='me-avatar'>{session?displayName.slice(0,1):'?'}</div>
+          <div className='me-identity'><b>{session?displayName:'WELCOME'}</b><span>{session?session.user.email:'Sign in to access your account'}</span><small>Classic Sporty Hacks member</small></div>
+          <button className='me-settings' onClick={()=>session?nav('support'):(setAuthMode('login'),setShowAuth(true))}>⚙</button>
+        </div>
+        <div className='me-tier'><span>LOYALTY TIER</span><b>MEMBER</b></div>
+        <div className='me-progress'><i/></div>
+        <div className='me-balance-line'><span>Total Balance</span><strong>{money(walletBalance ?? 0)}</strong></div>
+        <div className='me-actions'><button onClick={()=>nav('wallet')}>▣ <b>Deposit</b></button><button onClick={()=>nav('wallet')}>▤ <b>Withdraw</b></button></div>
         <button className='me-rewards' onClick={()=>nav('support')}><span><b>Classic Loyalty</b><small>Rewards · Challenges</small></span><strong>Explore Help　›</strong></button>
         <div className='me-quick-links'>
           <button onClick={()=>nav('bets')}><span>▤</span><b>Sports Bet<br/>History</b></button>
@@ -1400,7 +1400,7 @@ export default function App() {
       </div>
       <div className='me-appearance-row'>
         <span><b>Appearance</b><small>Choose how Classic Sporty Hacks looks</small></span>
-        <button type='button' onClick={()=>setTheme(current=>current==='light'?'dark':'light')} aria-label={theme==='light'?'Switch to dark mode':'Switch to light mode'}><span>{theme==='light'?'☀️':'🌙'}</span><b>{theme==='light'?'Light mode':'Dark mode'}</b><i>Switch</i></button>
+        <button type='button' onClick={()=>setTheme(current=>current==='light'?'dark':'light')} aria-label={theme==='light'?'Switch to dark mode':'Switch to light mode'}><span>{theme==='light'?'☀️':'🌙'}</span><b>{theme==='light'?'Light mode':'Dark mode'}</b><i>{theme==='light'?'Switch':'Switch'}</i></button>
       </div>
       <div className='me-menu'>
         {[
@@ -1466,3 +1466,4 @@ export default function App() {
     <footer className='sports-footer'>CLASSIC SPORTY HACKS <span>SUPABASE CONNECTED · 18+</span></footer>
   </div>;
 }
+
