@@ -1389,6 +1389,8 @@ export default function App() {
   <button type='button' className='red-action' onClick={playPracticeRound} disabled={footballBusy}>{footballBusy?'MATCH IN PROGRESS…':'▶ START FOOTBALL MATCH'}</button>
   {footballHistory.length>0&&<div className='virtual-football-history'><b>RECENT PRACTICE RESULTS</b>{footballHistory.map((item,index)=><span key={`${item}-${index}`}>{item}</span>)}</div>}
 </div>}{selectedGame!=='Instant Football'&&<button type='button' className='red-action' onClick={playPracticeRound}>PLAY PRACTICE ROUND</button>}{gameResult&&<div role='status' style={{marginTop:16,padding:14,background:'#252c35',borderRadius:8}}><b>{gameResult}</b></div>}</section> : <><div className='play-now'><b>GAME CATALOGUE</b><span>ⓘ</span></div><div className='virtual-grid'>{games.map(([title,label,art,tone])=><button type='button' className='virtual-card' key={title} aria-label={'Open '+title} onClick={()=>{setSelectedGame(title);setGameResult('');window.scrollTo({top:0,behavior:'smooth'});}}><small>▸ {label}</small><div className={'virtual-art '+tone}><div><b>{title}</b><span>▶ PLAY NOW</span></div><strong>{art}</strong></div></button>)}</div></>}</section>}
+{page==='profile'&&<section className='simple-screen me-screen'>
+<div className='me-hero'>
         <button className='me-rewards' onClick={()=>nav('support')}><span><b>Classic Loyalty</b><small>Rewards · Challenges</small></span><strong>Explore Help　›</strong></button>
         <div className='me-quick-links'>
           <button onClick={()=>nav('bets')}><span>▤</span><b>Sports Bet<br/>History</b></button>
