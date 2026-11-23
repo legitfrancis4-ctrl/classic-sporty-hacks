@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { api } from './lib/api';
-import { supabase } from './lib/supabase';
+import { api } from "./api";
+import { supabase } from "./supabase";
 import { Activity, ClipboardList, Search, Shield, Ticket, X, ChevronLeft, Gift, RefreshCw } from 'lucide-react';
 
 type Match = { id: string; league: string; time: string; home: string; away: string; score?: string; odds: string[]; live: boolean; homeLogo?: string; awayLogo?: string; operatorScheduled?: boolean; scheduledEndAt?: string; scheduledStatus?: string };
