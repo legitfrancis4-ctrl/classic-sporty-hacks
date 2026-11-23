@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { api } from "./api";
+import { api } from "./Api";
 import { supabase } from "./supabase";
 import { Activity, ClipboardList, Search, Shield, Ticket, X, ChevronLeft, Gift, RefreshCw } from 'lucide-react';
 
