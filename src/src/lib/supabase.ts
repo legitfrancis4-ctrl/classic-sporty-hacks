@@ -1,21 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL ||
-  'https://rucejbrxmpzrwhxqensy.supabase.co';
+// Publishable browser key. Protect every table with Supabase Row Level Security.
+const supabaseUrl = 'https://rucejbrxmpzrwhxqensy.supabase.co';
+const supabasePublishableKey = 'sb_publishable_mwcZkzvRe_Q38EiZmhlngg_PXv6Zo8n';
 
-const supabasePublishableKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  'sb_publishable_mwcZkzvRe_Q38EiZmhlngg_PXv6Zo8n';
-
-export const supabase = createClient(
-  supabaseUrl,
-  supabasePublishableKey,
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    }
-  }
-);
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
